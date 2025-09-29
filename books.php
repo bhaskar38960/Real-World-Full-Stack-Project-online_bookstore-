@@ -1,209 +1,44 @@
 <?php
+// Ensure config is loaded first, which sets up the path prefix
 require_once '../includes/config.php';
-require_once '../includes/auth.php';
+// Include the header (which will now use the correct paths)
+require_once '../includes/header.php';
 
-requireLogin();
-requireAdmin();
+// Access the global path prefix variable
+global $path_prefix;
 
-$pageTitle = 'Manage Books - Admin';
-$book = new Book();
-$errors = [];
-
-// Handle book actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_book'])) {
-        $data = [
-            'title' => sanitize($_POST['title']),
-            'author' => sanitize($_POST['author']),
-            'isbn' => sanitize($_POST['isbn']),
-            'description' => sanitize($_POST['description']),
-            'price' => floatval($_POST['price']),
-            'category' => sanitize($_POST['category']),
-            'stock' => intval($_POST['stock']),
-            'publisher' => sanitize($_POST['publisher']),
-            'publication_year' => intval($_POST['publication_year'])
-        ];
-        
-        if ($book->addBook($data)) {
-            setFlashMessage('Book added successfully', 'success');
-            redirect('/admin/books.php');
-        } else {
-            $errors[] = 'Failed to add book';
-        }
-    }
-    
-    if (isset($_POST['update_book'])) {
-        $id = intval($_POST['book_id']);
-        $bookData = $book->getBookById($id);
-        
-        $data = [
-            'title' => sanitize($_POST['title']),
-            'author' => sanitize($_POST['author']),
-            'isbn' => sanitize($_POST['isbn']),
-            'description' => sanitize($_POST['description']),
-            'price' => floatval($_POST['price']),
-            'category' => sanitize($_POST['category']),
-            'stock' => intval($_POST['stock']),
-            'image' => $bookData['image'],
-            'publisher' => sanitize($_POST['publisher']),
-            'publication_year' => intval($_POST['publication_year'])
-        ];
-        
-        if ($book->updateBook($id, $data)) {
-            setFlashMessage('Book updated successfully', 'success');
-            redirect('/admin/books.php');
-        } else {
-            $errors[] = 'Failed to update book';
-        }
-    }
-    
-    if (isset($_POST['delete_book'])) {
-        $id = intval($_POST['book_id']);
-        if ($book->deleteBook($id)) {
-            setFlashMessage('Book deleted successfully', 'success');
-            redirect('/admin/books.php');
-        } else {
-            $errors[] = 'Failed to delete book';
-        }
-    }
-}
-
-$books = $book->getAllBooks();
-$editBook = null;
-if (isset($_GET['edit'])) {
-    $editBook = $book->getBookById($_GET['edit']);
-}
-
-include '../includes/header.php';
+$db = Database::getInstance();
+// Fetch all books for the listing page
+$all_books = $db->query("SELECT * FROM books ORDER BY title ASC");
 ?>
 
-<div class="admin-page">
-    <h2>Manage Books</h2>
+<section class="book-listing" style="padding: 2rem 0;">
+    <h1 style="font-size: 2.5rem; margin-bottom: 2rem; text-align: center;">Our Complete Collection</h1>
     
-    <div class="admin-nav">
-        <a href="index.php">Dashboard</a>
-        <a href="books.php" class="active">Manage Books</a>
-        <a href="orders.php">Manage Orders</a>
-        <a href="users.php">Manage Users</a>
+    <div class="book-grid">
+        <?php if (!empty($all_books)): ?>
+            <?php foreach ($all_books as $book): ?>
+                <div class="book-card">
+                    <!-- Image URL path fixed using $path_prefix -->
+                    <img src="<?= $path_prefix . htmlspecialchars($book['image_url']) ?>" alt="<?= htmlspecialchars($book['title']) ?>" class="book-image" onerror="this.onerror=null;this.src='https://placehold.co/280x300/e5e7eb/6b7280?text=Book+Cover'">
+                    <div class="book-content">
+                        <h3 class="book-title"><?= htmlspecialchars($book['title']) ?></h3>
+                        <p class="book-author">By: <?= htmlspecialchars($book['author']) ?></p>
+                        <p class="book-price">$<?= number_format($book['price'], 2) ?></p>
+                        <p style="font-size: 0.8rem; color: #9ca3af; margin-bottom: 0.5rem;">Stock: <?= $book['stock_quantity'] > 0 ? $book['stock_quantity'] : 'Out of Stock' ?></p>
+                        
+                        <!-- Link to detail page and simple Add to Cart (placeholder) -->
+                        <a href="book-detail.php?id=<?= $book['id'] ?>" class="btn-primary" style="margin-right: 0.5rem;">Details</a>
+                        <button class="btn-primary" style="background-color: #f59e0b; border: none; cursor: pointer;">Add to Cart</button>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <p style="grid-column: 1 / -1; text-align: center;">We are currently restocking! No books found.</p>
+        <?php endif; ?>
     </div>
-    
-    <?php if (!empty($errors)): ?>
-    <div class="alert alert-error">
-        <?php foreach ($errors as $error): ?>
-            <p><?php echo $error; ?></p>
-        <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
-    
-    <div class="admin-content">
-        <div class="form-section">
-            <h3><?php echo $editBook ? 'Edit Book' : 'Add New Book'; ?></h3>
-            <form method="POST" action="">
-                <?php if ($editBook): ?>
-                    <input type="hidden" name="book_id" value="<?php echo $editBook['id']; ?>">
-                <?php endif; ?>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Title *</label>
-                        <input type="text" name="title" value="<?php echo $editBook['title'] ?? ''; ?>" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Author *</label>
-                        <input type="text" name="author" value="<?php echo $editBook['author'] ?? ''; ?>" required>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>ISBN</label>
-                        <input type="text" name="isbn" value="<?php echo $editBook['isbn'] ?? ''; ?>">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Category *</label>
-                        <input type="text" name="category" value="<?php echo $editBook['category'] ?? ''; ?>" required>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Price *</label>
-                        <input type="number" name="price" step="0.01" value="<?php echo $editBook['price'] ?? ''; ?>" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Stock *</label>
-                        <input type="number" name="stock" value="<?php echo $editBook['stock'] ?? '0'; ?>" required>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Publisher</label>
-                        <input type="text" name="publisher" value="<?php echo $editBook['publisher'] ?? ''; ?>">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Publication Year</label>
-                        <input type="number" name="publication_year" value="<?php echo $editBook['publication_year'] ?? ''; ?>">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea name="description" rows="4"><?php echo $editBook['description'] ?? ''; ?></textarea>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" name="<?php echo $editBook ? 'update_book' : 'add_book'; ?>" class="btn btn-primary">
-                        <?php echo $editBook ? 'Update Book' : 'Add Book'; ?>
-                    </button>
-                    <?php if ($editBook): ?>
-                        <a href="books.php" class="btn btn-secondary">Cancel</a>
-                    <?php endif; ?>
-                </div>
-            </form>
-        </div>
-        
-        <div class="table-section">
-            <h3>All Books</h3>
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Title</th>
-                        <th>Author</th>
-                        <th>Category</th>
-                        <th>Price</th>
-                        <th>Stock</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($books as $bookItem): ?>
-                    <tr>
-                        <td><?php echo $bookItem['id']; ?></td>
-                        <td><?php echo htmlspecialchars($bookItem['title']); ?></td>
-                        <td><?php echo htmlspecialchars($bookItem['author']); ?></td>
-                        <td><?php echo htmlspecialchars($bookItem['category']); ?></td>
-                        <td><?php echo formatPrice($bookItem['price']); ?></td>
-                        <td><?php echo $bookItem['stock']; ?></td>
-                        <td class="actions">
-                            <a href="?edit=<?php echo $bookItem['id']; ?>" class="btn btn-sm">Edit</a>
-                            <form method="POST" action="" style="display:inline;">
-                                <input type="hidden" name="book_id" value="<?php echo $bookItem['id']; ?>">
-                                <button type="submit" name="delete_book" class="btn btn-danger btn-sm" 
-                                        onclick="return confirm('Are you sure?')">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+</section>
 
-<?php include '../includes/footer.php'; ?>
+<?php
+require_once '../includes/footer.php';
+?>
