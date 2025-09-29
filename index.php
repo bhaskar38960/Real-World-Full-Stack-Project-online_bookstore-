@@ -1,47 +1,42 @@
 <?php
-require_once '../includes/config.php';
-// Include the main header but ensure only admins can access
-require_once '../includes/header.php';
+require_once 'includes/header.php';
 
-// Check if user is logged in AND is an admin
-if (!User::isLoggedIn() || !User::isAdmin()) {
-    // Redirect non-admins to the home page or login page
-    redirect('../pages/login.php');
-}
+// In a real application, you would create a Book class and fetch data using it.
+// For this example, we use the Database class directly to show Featured Books.
 
-// In a real scenario, you would calculate these numbers
 $db = Database::getInstance();
-$total_users = $db->query("SELECT COUNT(*) as count FROM users")[0]['count'];
-$total_books = $db->query("SELECT COUNT(*) as count FROM books")[0]['count'];
-$pending_orders = $db->query("SELECT COUNT(*) as count FROM orders WHERE status = 'pending'")[0]['count'];
+$featured_books = $db->query("SELECT * FROM books LIMIT 3");
 ?>
 
-<section class="admin-dashboard" style="padding: 2rem 0;">
-    <h1 style="font-size: 2.5rem; margin-bottom: 1.5rem; color: var(--secondary-color);">Admin Dashboard</h1>
-    <p style="margin-bottom: 2rem;">Welcome, <?= htmlspecialchars($_SESSION['username'] ?? 'Admin') ?>. Manage the bookstore operations here.</p>
+<section class="hero" style="background-color: var(--primary-color); color: var(--bg-white); padding: 4rem 2rem; border-radius: 8px; text-align: center; margin-top: 2rem;">
+    <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Welcome to the Digital Library</h1>
+    <p style="font-size: 1.25rem; margin-bottom: 1.5rem;">Your destination for the best technical and fictional literature.</p>
+    <a href="pages/books.php" class="btn-primary" style="background-color: var(--secondary-color); padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">Browse All Books</a>
+</section>
 
-    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
-        
-        <div class="stat-card" style="background-color: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: var(--shadow); border-left: 5px solid var(--primary-color);">
-            <h3 style="font-size: 1.25rem; color: #6b7280; margin-bottom: 0.5rem;">Total Users</h3>
-            <p style="font-size: 2rem; font-weight: bold;"><?= $total_users ?></p>
-            <a href="users.php" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem;">View Users</a>
-        </div>
-        
-        <div class="stat-card" style="background-color: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: var(--shadow); border-left: 5px solid var(--secondary-color);">
-            <h3 style="font-size: 1.25rem; color: #6b7280; margin-bottom: 0.5rem;">Total Books</h3>
-            <p style="font-size: 2rem; font-weight: bold;"><?= $total_books ?></p>
-            <a href="books.php" style="color: var(--secondary-color); text-decoration: none; font-size: 0.9rem;">Manage Books</a>
-        </div>
-        
-        <div class="stat-card" style="background-color: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: var(--shadow); border-left: 5px solid #ef4444;">
-            <h3 style="font-size: 1.25rem; color: #6b7280; margin-bottom: 0.5rem;">Pending Orders</h3>
-            <p style="font-size: 2rem; font-weight: bold;"><?= $pending_orders ?></p>
-            <a href="orders.php" style="color: #ef4444; text-decoration: none; font-size: 0.9rem;">View Orders</a>
-        </div>
+<section class="featured-books" style="padding: 2rem 0;">
+    <h2 style="font-size: 2rem; margin-bottom: 1.5rem; text-align: center;">Featured Reads</h2>
+    
+    <div class="book-grid">
+        <?php if (!empty($featured_books)): ?>
+            <?php foreach ($featured_books as $book): ?>
+                <div class="book-card">
+                    <img src="<?= htmlspecialchars($book['image_url']) ?>" alt="<?= htmlspecialchars($book['title']) ?>" class="book-image" onerror="this.onerror=null;this.src='https://placehold.co/280x300/e5e7eb/6b7280?text=Book+Cover'">
+                    <div class="book-content">
+                        <h3 class="book-title"><?= htmlspecialchars($book['title']) ?></h3>
+                        <p class="book-author">By: <?= htmlspecialchars($book['author']) ?></p>
+                        <p class="book-price">$<?= number_format($book['price'], 2) ?></p>
+                        <!-- Link to detail page (placeholder) -->
+                        <a href="pages/book-detail.php?id=<?= $book['id'] ?>" class="btn-primary">View Details</a>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <p style="grid-column: 1 / -1; text-align: center;">No featured books available at the moment.</p>
+        <?php endif; ?>
     </div>
 </section>
 
 <?php
-require_once '../includes/footer.php';
+require_once 'includes/footer.php';
 ?>
